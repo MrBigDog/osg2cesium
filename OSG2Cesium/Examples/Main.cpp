@@ -68,7 +68,7 @@ void ProcessTiles(std::string indir,std::string outdir)
 	osg::ref_ptr<osg::Group> scene = dynamic_cast<osg::Group*>(loadModels(files));
 
 	PagedLOD2Tiles pagedLOD2Tiles;
-	pagedLOD2Tiles.setTransform(50.19793099999999700000, 127.59859899999999000000, 60, osg::Matrix::scale(0.3048, 0.3048, 0.3048));
+	pagedLOD2Tiles.setTransform(50.19793099999999700000, 127.59859899999999000000, 60);
 	pagedLOD2Tiles.toTileSet(scene, outdir);
 }
 
