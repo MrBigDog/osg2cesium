@@ -1,0 +1,89 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{CA501695-737C-492A-89E8-BA3005CE3ABA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{0CC4AF94-41F7-44EC-B285-848C84FF904D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common">
+      <UniqueIdentifier>{a3af62d1-eaf5-49c3-a708-b25d700ab90c}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\..\include\osg\OpenThreads\Atomic">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="..\..\..\..\include\osg\OpenThreads\Barrier">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="..\..\..\..\include\osg\OpenThreads\Block">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="..\..\..\..\include\osg\OpenThreads\Condition">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="..\..\..\..\include\osg\OpenThreads\Exports">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="..\..\..\..\include\osg\OpenThreads\Mutex">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="..\..\..\..\include\osg\OpenThreads\ReadWriteMutex">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="..\..\..\..\include\osg\OpenThreads\ReentrantMutex">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="..\..\..\..\include\osg\OpenThreads\ScopedLock">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="..\..\..\..\include\osg\OpenThreads\Thread">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="..\..\..\..\include\osg\OpenThreads\Version">
+      <Filter>Header Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="WIN32Condition.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Win32Mutex.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Win32Thread.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Win32ThreadBarrier.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Atomic.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Version.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="HandleHolder.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Win32BarrierPrivateData.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Win32ConditionPrivateData.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Win32MutexPrivateData.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Win32ThreadPrivateData.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\..\OpenThreadsVersionInfo.rc" />
+  </ItemGroup>
+</Project>
