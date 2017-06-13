@@ -1,6 +1,6 @@
 #include "OSG2GLTF.h"
 #include "osgDB/ReadFile"
-void OSG2GLTF::updateStateset(osg::StateSet* stateset, osg::Material*& mat, osg::Texture2D*& tex)
+void OSG2GLTF::getMaterial(osg::StateSet* stateset, osg::Material*& mat, osg::Texture2D*& tex)
 {
 	if (!stateset)
 		return;
@@ -63,7 +63,7 @@ Json::Value OSG2GLTF::createMaterialNode(osg::Material* mat, std::string name, s
 Json::Value OSG2GLTF::createNode(osg::Node* node, osg::StateSet* parentStateSet)
 {
 
-	///updateStateset(node->getStateSet(),mat,tex);
+	///getMaterial(node->getStateSet(),mat,tex);
 
 	//node->getOrCreateStateSet()->setAttributeAndModes(material, osg::StateAttribute::OVERRIDE | osg::StateAttribute::ON);
 	osg::ref_ptr<osg::StateSet> curStateSet = new osg::StateSet(*node->getOrCreateStateSet());
@@ -99,7 +99,7 @@ Json::Value OSG2GLTF::createNode(osg::Node* node, osg::StateSet* parentStateSet)
 			    blendEnabled = true;
 			osg::Material* mat = NULL;
 			osg::Texture2D* tex = NULL;
-			updateStateset(geom->getStateSet(), mat, tex);
+			getMaterial(geom->getStateSet(), mat, tex);
 			std::string materialname = "";
 			if (geom->getName() == "")
 			{
@@ -495,9 +495,9 @@ Json::Value OSG2GLTF::createShader(std::string outdir, std::string shaderFile, c
 
 	Json::Value shader;
 	shader["type"] = shaderType;
-	if (type == GLTF)
+	if (type == GLTF || outdir != "")
 	{
-		shader["uri"] = shaderFile;
+		shader["uri"] = outdir + shaderFile;
 		std::ofstream ofs(outdir + shaderFile);
 		ofs << shaderSource;
 		ofs.close();
@@ -719,6 +719,22 @@ std::string OSG2GLTF::getPointer(void* ptr)
 
 void OSG2GLTF::toGLTF(osg::Node* osgNode, std::string outdir, std::string outname, FileType type)
 {
+	osg::ref_ptr<osg::Node> dummyNode;
+	/*if (m_flipAxis)
+	{
+		dummyNode = new osg::MatrixTransform;
+		((osg::MatrixTransform*)dummyNode->asNode())->addChild(osgNode);
+		((osg::MatrixTransform*)dummyNode->asNode())->setMatrix(osg::Matrix::rotate(osg::DegreesToRadians(90.0),osg::Vec3(1,0,0)));
+	}
+	else
+	{*/
+		dummyNode = osgNode;
+	//}
+
+	if (dummyNode->getName() == "")
+	{
+		dummyNode->setName(outname);
+	}
 	m_type = type;
 	m_indexBufferData.clear();
 	m_vertexBufferData.clear();
@@ -736,14 +752,14 @@ void OSG2GLTF::toGLTF(osg::Node* osgNode, std::string outdir, std::string outnam
 	std::string buffername = outname;
 	if (type != GLTF)
 		buffername = "binary_glTF";
-	osgNode->accept(m_GeometryVisitor);
+	dummyNode->accept(m_GeometryVisitor);
 
 	//if (m_GeometryVisitor.m_ImageMap.size() > 0)
 	//	return;
 	m_Technique = createTechniqueNode(false, type);
 	m_TransparentTechnique = createTechniqueNode(true, type);
 	Json::Value gltf;
-	Json::Value rootNode = createNode(osgNode);
+	Json::Value rootNode = createNode(dummyNode);
 
 	Json::Value accessors;
 	std::map<std::string, Json::Value>::iterator iter = m_accessors.begin();
@@ -768,8 +784,8 @@ void OSG2GLTF::toGLTF(osg::Node* osgNode, std::string outdir, std::string outnam
 
 	Json::Value imagesNode = createImages(outdir, buffername, type);
 	Json::Value shaders;
-	shaders[m_vsShaderFileName] = createShader(outdir, m_vsShaderFileName, VertexShader_Textured, 35633, buffername, type);
-	shaders[m_fsShaderFileName] = createShader(outdir, m_fsShaderFileName, FragmentShader_Textured, 35632, buffername, type);
+	shaders[m_vsShaderFileName] = createShader(m_externalShaderPath, m_vsShaderFileName, VertexShader_Textured, 35633, buffername, type);
+	shaders[m_fsShaderFileName] = createShader(m_externalShaderPath, m_fsShaderFileName, FragmentShader_Textured, 35632, buffername, type);
 
 
 	iter = m_bufferViews.begin();
@@ -858,7 +874,8 @@ void OSG2GLTF::toGLTF(osg::Node* osgNode, std::string outdir, std::string outnam
 	Json::Value scenes;
 	Json::Value defaultScene;
 	Json::Value defaultSceneNodes(Json::arrayValue);
-	defaultSceneNodes.append(osgNode->getName());
+	//defaultSceneNodes.append(osgNode->getName());
+	defaultSceneNodes.append(dummyNode->getName());
 	defaultScene["nodes"] = defaultSceneNodes;
 	scenes["defaultScene"] = defaultScene;
 	gltf["scenes"] = scenes;
@@ -914,4 +931,14 @@ void OSG2GLTF::toGLTF(std::string filename, std::string outdir, std::string outn
 	{
 		toGLTF(node, outdir, outname, type);
 	}
+}
+
+void OSG2GLTF::setFlipAxis(bool flip)
+{
+	m_flipAxis = flip;
+}
+
+void OSG2GLTF::setExternalShaderPath(std::string shaderPath)
+{
+	m_externalShaderPath = shaderPath;
 }

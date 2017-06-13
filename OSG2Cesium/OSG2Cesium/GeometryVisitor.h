@@ -230,7 +230,8 @@ public:
 	static void clearBatchTable();
 	GeometryVisitor() :osg::NodeVisitor(osg::NodeVisitor::NODE_VISITOR, TRAVERSE_ALL_CHILDREN)
 	{
-		setNodeMaskOverride(0xffffffff); m_flipAxis = true;
+		setNodeMaskOverride(0xffffffff); 
+		//m_flipAxis = true;
 	}
 	~GeometryVisitor();
 	virtual void apply(osg::Geode& node);
@@ -248,7 +249,7 @@ public:
 	std::vector<BatchInfo> m_Batches;
 	//std::map<GeometryWrapper*, std::vector<BatchInfo>> m_Batches;
 	void gatherTexture(osg::Texture* tex);
-	bool m_flipAxis;
+	//bool m_flipAxis;
 private:
 	osg::BoundingBox g_mExtent;
 

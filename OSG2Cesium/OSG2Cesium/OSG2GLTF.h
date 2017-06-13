@@ -122,8 +122,8 @@ static const char *FragmentShader_Textured = {
 "    diffuse.rgb = v_color.a * diffuse.rgb * u_diffuse.rgb;\n"
 "    if(length(v_color.rgb) > 0.0001)\n"
 "       diffuse.rgb = diffuse.rgb * v_color.rgb;\n"
-"    diffuse.rgb *= max(dot(normal,vec3(0.,0.,1.)), 0.);\n"
-"    diffuse.a = diffuse.a * u_diffuse.a * v_color.a;\n"
+"    //diffuse.rgb *= max(dot(normal,vec3(0.,0.,1.)), 0.);\n"
+"    //diffuse.a = diffuse.a * u_diffuse.a * v_color.a;\n"
 "   //color.xyz += diffuse.xyz;\n"
 "   //color = vec4(color.rgb * diffuse.a, diffuse.a);\n"
 "   gl_FragColor = diffuse;\n"
@@ -136,8 +136,9 @@ class OSG2GLTF
 public:
 	OSG2GLTF()
 	{
-		m_vsShaderFileName = "TexturedVS.glsl";
-		m_fsShaderFileName = "TexturedFS.glsl";
+		m_vsShaderFileName = "VertexShader.glsl";
+		m_fsShaderFileName = "FragmentShader.glsl";
+		m_externalShaderPath = "";
 		m_flipAxis = true;
 		//m_resourcesDir = "B:/cesium-3d-tiles/Apps/SampleData/models/OSG2GLTF/";
 	}
@@ -159,7 +160,9 @@ public:
 	//把osg节点文件转换为GLTF,GLB或者B3DM
 	void toGLTF(std::string filename, std::string outdir, std::string outname, FileType type = FileType::GLTF);
 	//是否从Z轴朝上翻转为Y朝上，默认为TRUE
-	bool m_flipAxis;
+	void setFlipAxis(bool flip);
+	//设置shader输出路径
+	void setExternalShaderPath(std::string shaderPath);
 private:
 	std::map<std::string, Json::Value> m_materials;
 	std::map<std::string, Json::Value> m_bufferViews;
@@ -182,10 +185,12 @@ private:
 	Json::Value m_extensionsUsed;
 	std::string m_fsShaderFileName;
 	std::string m_vsShaderFileName;
+	std::string m_externalShaderPath;
+	bool m_flipAxis;
 	//std::string m_resourcesDir;
 	GeometryVisitor m_GeometryVisitor;
 	std::string getPointer(void* ptr);
-	void updateStateset(osg::StateSet* stateset, osg::Material*& mat, osg::Texture2D*& tex);
+	void getMaterial(osg::StateSet* stateset, osg::Material*& mat, osg::Texture2D*& tex);
 	Json::Value createMaterialNode(osg::Material* mat, std::string name, std::string texname = "");
 	Json::Value createNode(osg::Node* node, osg::StateSet* parentStateSet = NULL);
 	void attachNode(Json::Value& root, std::string name1, Json::Value val);
@@ -203,6 +208,7 @@ private:
 	void writeGLTF(std::string outdir, std::string outname,std::string buffername,Json::Value& gltf, FileType type = FileType::GLTF);
 	Json::Value createBatchTable();
 	Json::Value createFeatureTable();
+
 };
 
 

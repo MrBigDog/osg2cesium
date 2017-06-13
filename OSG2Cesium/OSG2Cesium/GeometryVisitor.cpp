@@ -302,8 +302,8 @@ void GeometryVisitor::apply(osg::Geode& node)
 		for (size_t j= 0; j < numvertices; j++)
 		{
 			osg::Vec3 pos = getVec3(vertices, j);
-			if (m_flipAxis)
-				pos = osg::Vec3(pos.x(), pos.z(), -pos.y());
+			//从Z轴朝上翻转为Y朝上
+			pos = osg::Vec3(pos.x(), pos.z(), -pos.y());
 			wrapper->bound.expandBy(pos);
 			wrapper->tri_positions.push_back(pos);
 		}
@@ -331,8 +331,8 @@ void GeometryVisitor::apply(osg::Geode& node)
 			for (size_t j = 0; j <numvertices; j++)
 			{
 				osg::Vec3 normal = getVec3(normals, 0);
-				if (m_flipAxis)
-					normal = -osg::Vec3(normal.x(), normal.z(), -normal.y());
+				//从Z轴朝上翻转为Y朝上
+				normal = -osg::Vec3(normal.x(), normal.z(), -normal.y());
 				wrapper->tri_normals.push_back(normal);
 			}
 
@@ -342,8 +342,8 @@ void GeometryVisitor::apply(osg::Geode& node)
 			for (size_t j = 0; j < numvertices; j++)
 			{
 				osg::Vec3 normal = getVec3(normals, j);
-				if (m_flipAxis)
-					normal = osg::Vec3(normal.x(), normal.z(), -normal.y());
+				//从Z轴朝上翻转为Y朝上
+				normal = osg::Vec3(normal.x(), normal.z(), -normal.y());
 				wrapper->tri_normals.push_back(normal);
 			}
 

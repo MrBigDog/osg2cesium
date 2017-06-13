@@ -2,20 +2,34 @@
 #include "Utils.h"
 PagedLOD2Tiles::PagedLOD2Tiles()
 {
-	m_flipAxis = true;
+	setFlipAxis(true);
 }
-void PagedLOD2Tiles::setTransform(double lat,double lon, double height,osg::Matrix localTransform)
+void PagedLOD2Tiles::setTransform(double lat,double lon, double height,osg::Matrixd localTransform)
 {
 		m_latlonheight = osg::Vec3d(lat, lon,height);
-		//m_referenceCenter = osg::Vec3(-368.594970703125f,
-		//	18.727205276489258f,
-		//	1614.8956298828125f);
 		m_ellipsoidModel.computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians(lat), osg::DegreesToRadians(lon), height, m_local2world);
 		m_localTransform = localTransform;
 }
 PagedLOD2Tiles::~PagedLOD2Tiles()
 {
 
+}
+void PagedLOD2Tiles::setFlipAxis(bool flip)
+{
+	/*m_flipAxis = flip;
+	if (flip)
+	{
+		m_flipAxisTransform = osg::Matrixd::rotate(osg::DegreesToRadians(90.0), osg::Vec3(-1, 0, 0));
+	}
+	else
+	{*/
+		m_flipAxisTransform = osg::Matrixd::identity();
+	//}
+}
+
+osg::Matrixd PagedLOD2Tiles::getTransform()
+{
+	return m_localTransform * m_flipAxisTransform * m_local2world;
 }
 
 Json::Value PagedLOD2Tiles::createTransformNode(osg::Matrixd& mat)
@@ -52,7 +66,7 @@ Json::Value PagedLOD2Tiles::createRegionNode(osg::BoundingBoxd localbb)
 	geobb.init();
 	for (size_t i = 0; i < 8; i++)
 	{
-		osg::Vec3d world = localbb.corner(i) * m_localTransform * m_local2world;
+		osg::Vec3d world = localbb.corner(i) * m_localTransform * m_flipAxisTransform * m_local2world;
 		double lat, lon, height;
 		m_ellipsoidModel.convertXYZToLatLongHeight(world.x(), world.y(), world.z(), lat, lon, height);
 		geobb.expandBy(lon, lat, height);
@@ -65,18 +79,10 @@ Json::Value PagedLOD2Tiles::createRegionNode(osg::BoundingBoxd localbb)
 	region.append(geobb.zMax());
 	return region;
 }
-osg::BoundingBox PagedLOD2Tiles::flip(osg::BoundingBox bb)
-{
-	osg::Vec3 bbmin(bb.xMin(), bb.zMin(), -bb.yMin());
-	osg::Vec3 bbmax(bb.xMax(), bb.zMax(), -bb.yMax());
-	osg::BoundingBox newbb(bbmin, bbmax);
 
-	return newbb;
-	//pos = osg::Vec3(pos.x(), pos.z(), -pos.y());
-}
 float PagedLOD2Tiles::calGeometricError(float radius, float screenPixels)
 {
-	return (3.1415926 * radius * radius) / screenPixels;// (radius * 2 / screenPixels) * 2;
+	return (3.1415926 * radius * radius) / screenPixels / 10;// (radius * 2 / screenPixels) * 2;
 }
 
 void PagedLOD2Tiles::findPagedLOD(osg::Node* parent, std::vector<osg::PagedLOD*>& pagedLODList)
@@ -119,11 +125,6 @@ int PagedLOD2Tiles::createNode(std::string filename,osg::Node* node2, std::strin
 	}
 	else
 	{
-	/*	for (size_t i = 0; i < group->getNumChildren(); i++)
-		{
-			if(dynamic_cast<osg::PagedLOD*>(group->getChild(i)))
-				childLODS.push_back((osg::PagedLOD*)group->getChild(i));
-		}*/
 		findPagedLOD(node, childLODS);
 	}
 
@@ -131,17 +132,14 @@ int PagedLOD2Tiles::createNode(std::string filename,osg::Node* node2, std::strin
 	osg::ComputeBoundsVisitor cv;
 	node->accept(cv);
 	bb = cv.getBoundingBox();
-	//if (m_flipAxis)
-	//	bb = flip(bb);
 	float range = 0;
 	float radius = 0;
-	//float geometricError = 0;
 	if (childLODS.size() > 0 && childLODS[0]->getRangeList().size() > 1)
 	{
 		range = childLODS[0]->getRangeList()[0].second;
 		radius = childLODS[0]->getRadius();
 		geometricError = calGeometricError(radius, range);
-		printf("%f,%f,%f\n",radius,range,geometricError);
+		//printf("%f,%f,%f\n",radius,range,geometricError);
 		if (geometricErrorOfFirstLevel <= 0)
 		{
 			geometricErrorOfFirstLevel = geometricError;
@@ -160,17 +158,19 @@ int PagedLOD2Tiles::createNode(std::string filename,osg::Node* node2, std::strin
 	if (node.valid() /*&& !node2*/)
 	{
 		OSG2GLTF osg2gltf;
-		osg2gltf.m_flipAxis = m_flipAxis;
+		osg2gltf.setFlipAxis(false);
+		//osg2gltf.m_flipAxis = m_flipAxis;
 		//检测文件是否存在。如存在就不覆盖
-		/*std::ifstream file(outdir + outname + ".b3dm");
-		if (!file) {
-			file.close();
-			osg2gltf.toGLTF(node, outdir, outname, OSG2GLTF::B3DM);
-		}
-		else
-		{
-		  file.close();
-		}*/
+		//std::ifstream file(outdir + outname + ".b3dm");
+		//if (!file) {
+		//	file.close();
+		//	osg2gltf.toGLTF(node, outdir, outname, OSG2GLTF::B3DM);
+		//}
+		//else
+		//{
+		//  file.close();
+		//}
+		osg2gltf.setExternalShaderPath("../");
 		osg2gltf.toGLTF(node, outdir, outname, OSG2GLTF::B3DM);
 
 	}
@@ -210,6 +210,7 @@ int PagedLOD2Tiles::createNode(std::string filename,osg::Node* node2, std::strin
 
 void PagedLOD2Tiles::toTileSet(osg::Node* node, std::string outdir)
 {
+	m_outputRoot = outdir;
 	Json::Value tilset;
 	Json::Value asset;
 	asset["version"] = "0.0";
@@ -218,12 +219,7 @@ void PagedLOD2Tiles::toTileSet(osg::Node* node, std::string outdir)
 	tilset["asset"] = asset;
 	tilset["properties"] = properties;
 	Json::Value root;
-	//Json::Value transform(Json::arrayValue);
-	//transform.append(0.9686356343768792); transform.append(0.24848542777253735); transform.append(0.0); transform.append(0.0);
-	//transform.append(-0.15986460744966327); transform.append(0.623177611820219); transform.append(0.765567091384559); transform.append(0.0);
-	//transform.append(0.19023226619126932); transform.append(-0.7415555652213445); transform.append(0.6433560667227647); transform.append(0.0);
-	//transform.append(1215011.9317263428); transform.append(-4736309.3434217675); transform.append(4081602.0044800863); transform.append(1.0);
-	root["transform"] = createTransformNode(m_localTransform * m_local2world);
+	root["transform"] = createTransformNode(m_flipAxisTransform * m_localTransform * m_local2world);
 	float geometricError = calGeometricError(node->getBound().radius(), 0.5);
 	float geometricErrorOfFirstLevel = -1;
 	createNode("", node, "root", outdir, root, root, geometricError, geometricErrorOfFirstLevel);
@@ -236,44 +232,7 @@ void PagedLOD2Tiles::toTileSet(osg::Node* node, std::string outdir)
 	ofs.close();
 
 }
-void PagedLOD2Tiles::toTileSet(std::string pagelodfile,  std::string outdir)
-{
-
-	osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(pagelodfile);
-	//std::string name;
-	//std::string ext;
-	//std::string dir;
-	//splitFilepath(pagelodfile, dir, name, ext);
-	toTileSet(node, outdir);
-	//Json::Value tilset;
-	//Json::Value asset;
-	//asset["version"] = "0.0";
-	//asset["tilesetVersion"] = "1.2.3";
-	//Json::Value properties;
-	//tilset["asset"] = asset;
-	//tilset["properties"] = properties;
-	//Json::Value root;
-	////Json::Value transform(Json::arrayValue);
-	////transform.append(0.9686356343768792); transform.append(0.24848542777253735); transform.append(0.0); transform.append(0.0);
-	////transform.append(-0.15986460744966327); transform.append(0.623177611820219); transform.append(0.765567091384559); transform.append(0.0);
-	////transform.append(0.19023226619126932); transform.append(-0.7415555652213445); transform.append(0.6433560667227647); transform.append(0.0);
-	////transform.append(1215011.9317263428); transform.append(-4736309.3434217675); transform.append(4081602.0044800863); transform.append(1.0);
-	//root["transform"] = createTransformNode(m_localTransform * m_local2world);
-	//std::string name;
-	//std::string ext;
-	//std::string dir;
-	//splitFilepath(pagelodfile, dir, name, ext);
-	//createNode(pagelodfile, NULL, name, outdir, root, root,8);
-	//tilset["root"] = root;
-	//Json::StyledWriter sw;
-	//std::string tilesetContent = sw.write(tilset);
-	//std::ofstream ofs(outdir + "tileset.json");
-	//ofs << tilesetContent;
-	//ofs.close();
-
-}
-
-void PagedLOD2Tiles::toTileSet(osg::Group* group, std::string outdir)
+void PagedLOD2Tiles::toTileSet(osg::Node* node, std::string outdir, float& geometricErrorOfFirstLevel)
 {
 	Json::Value tilset;
 	Json::Value asset;
@@ -283,21 +242,76 @@ void PagedLOD2Tiles::toTileSet(osg::Group* group, std::string outdir)
 	tilset["asset"] = asset;
 	tilset["properties"] = properties;
 	Json::Value root;
-	//Json::Value transform(Json::arrayValue);
-	//transform.append(0.9686356343768792); transform.append(0.24848542777253735); transform.append(0.0); transform.append(0.0);
-	//transform.append(-0.15986460744966327); transform.append(0.623177611820219); transform.append(0.765567091384559); transform.append(0.0);
-	//transform.append(0.19023226619126932); transform.append(-0.7415555652213445); transform.append(0.6433560667227647); transform.append(0.0);
-	//transform.append(1215011.9317263428); transform.append(-4736309.3434217675); transform.append(4081602.0044800863); transform.append(1.0);
-	root["transform"] = createTransformNode(m_localTransform * m_local2world);
+	//root["transform"] = createTransformNode(m_flipAxisTransform);
+	float geometricError = calGeometricError(node->getBound().radius(), 0.5);
+	createNode("", node, "root", outdir, root, root, geometricError, geometricErrorOfFirstLevel);
 
-	osg::BoundingBox bb;
-	osg::ComputeBoundsVisitor cv;
-	group->accept(cv);
-	bb = cv.getBoundingBox();
-	float geometricError = calGeometricError(group->getBound().radius(),0.5);
+	tilset["root"] = root;
+	Json::StyledWriter sw;
+	std::string tilesetContent = sw.write(tilset);
+	std::ofstream ofs(outdir + "tileset.json");
+	ofs << tilesetContent;
+	ofs.close();
+
+}
+void PagedLOD2Tiles::toTileSet(std::string indir, std::string outdir)
+{
+	m_outputRoot = outdir;
+	Json::Value tilset;
+	Json::Value asset;
+	asset["version"] = "0.0";
+	asset["tilesetVersion"] = "1.2.3";
+	Json::Value properties;
+	tilset["asset"] = asset;
+	tilset["properties"] = properties;
+	Json::Value root;
+	root["transform"] = createTransformNode(m_flipAxisTransform *  m_localTransform * m_local2world);
+
+	std::vector<std::string> dirs = Utils::findSubdirs(indir + "*");
+	osg::BoundingBox bound;
+	bound.init();
+	CreateDirectoryA(outdir.data(), NULL);
+	Json::Value children(Json::arrayValue);
+	float geometricErrorOfFirstLevel = -1;
+	for (size_t i = 0; i < dirs.size(); i++)
+	{
+		if (dirs[i] == "." || dirs[i] == "..")
+			continue;
+		std::string dirname = dirs[i];
+		std::string nodefile = indir + dirs[i] + "/" + dirs[i] + ".osgb";
+		osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(nodefile);
+		if (!node || !node.valid())
+			continue;
+		std::string subdir = outdir + dirname + "/";
+		CreateDirectoryA(subdir.data(), NULL);
+		osg::BoundingBox bb;
+		osg::ComputeBoundsVisitor cv;
+		node->accept(cv);
+		bb = cv.getBoundingBox();
+		bound.expandBy(bb);
+		Json::Value childnode;
+		float geometricError = -1;
+		//createNode("", group->getChild(i), childname, outdir, childnode, childnode, geometricError * 0.5, geometricErrorOfFirstLevel);
+		toTileSet(node, subdir, geometricError);
+		childnode["refine"] = "add";
+		childnode["geometricError"] = geometricError;
+		if (geometricErrorOfFirstLevel < geometricError)
+			geometricErrorOfFirstLevel = geometricError;
+		Json::Value content;
+		content["url"] = dirname + "/tileset.json";
+		Json::Value boundingVolume;
+		//boundingVolume["box"] = createBoxNode(bb);
+		boundingVolume["region"] = createRegionNode(bb);
+		//content["boundingVolume"] = boundingVolume;
+		childnode["boundingVolume"] = boundingVolume;
+		childnode["content"] = content;
+		children.append(childnode);
+	}
+/*
+
+	float geometricError = calGeometricError(group->getBound().radius(), 0.5);
 	float geometricErrorOfFirstLevel = -1;
 
-	Json::Value children(Json::arrayValue);
 	for (size_t i = 0; i < group->getNumChildren(); i++)
 	{
 		std::string childname;
@@ -308,12 +322,12 @@ void PagedLOD2Tiles::toTileSet(osg::Group* group, std::string outdir)
 		createNode("", group->getChild(i), childname, outdir, childnode, childnode, geometricError * 0.5, geometricErrorOfFirstLevel);
 		childnode["refine"] = "replace";
 		children.append(childnode);
-	}
+	}*/
 	root["geometricError"] = geometricErrorOfFirstLevel * 2;
 	Json::Value boundingVolume;
-	boundingVolume["region"] = createRegionNode(bb);
+	boundingVolume["region"] = createRegionNode(bound);
 	root["boundingVolume"] = boundingVolume;
-	root["refine"] = "replace";
+	root["refine"] = "add";
 
 	root["children"] = children;
 	tilset["root"] = root;
