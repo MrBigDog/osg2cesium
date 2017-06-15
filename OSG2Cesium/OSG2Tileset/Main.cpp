@@ -1,6 +1,6 @@
 // OSG2Cesium.cpp : Defines the entry point for the console application.
 //
-
+ 
 #include "stdafx.h"
 #include "OSG2GLTF.h"
 #include "PAGEDLOD2TILESET.h"

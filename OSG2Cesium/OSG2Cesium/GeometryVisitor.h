@@ -202,7 +202,7 @@ struct BatchInfo
 class GeometryWrapper
 {
 public:
-
+ 
 	std::vector<osg::Vec3i> tri_indices;
 	std::vector<osg::Vec3> tri_positions;
 	std::vector<osg::Vec3> tri_normals;

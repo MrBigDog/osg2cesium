@@ -21,7 +21,7 @@
 #include "EllipsoidModel.h"
 //带PagedLOD的OSG场景节点到3D Tile的转换类
 class PagedLOD2Tiles
-{
+{  
 public:
 	//模型局部坐标系进行变换的矩阵
 	osg::Matrix m_localTransform;
@@ -41,13 +41,13 @@ public:
 	//height:高度 （可能是绝对海拔高度）
 	//localTransform：局部坐标系进行变换的矩阵,可以对3D Tiles进行整体的缩放平移旋转,例如setTransform(50.1979, 127.59859, 60, osg::Matrix::scale(0.3048, 0.3048, 0.3048) * osg::Matrix::translate(0,0,500));
 	void setTransform(double lat,double lon, double height,osg::Matrixd localTransform = osg::Matrixd::identity());
-	//是否从Z轴朝上翻转为Y朝上，默认为TRUE
-	void setFlipAxis(bool flip);
+	////是否从Z轴朝上翻转为Y朝上，默认为TRUE
+	//void setFlipAxis(bool flip);
 	osg::Matrixd getTransform();
 private:
-	//是否从Z轴朝上翻转为Y朝上，默认为TRUE
-	bool m_flipAxis;
-	osg::Matrixd m_flipAxisTransform;
+	////是否从Z轴朝上翻转为Y朝上，默认为TRUE
+	//bool m_flipAxis;
+	//osg::Matrixd m_flipAxisTransform;
 	osg::CesiumEllipsoidModel m_ellipsoidModel;
 	osg::Matrixd m_local2world;
 	osg::Vec3d m_latlonheight;
@@ -61,8 +61,8 @@ private:
 	//目前只支持PIXEL_SIZE_ON_SCREEN模式的range
 	float calGeometricError(float radius, float screenPixels);
 	void findPagedLOD(osg::Node* parent, std::vector<osg::PagedLOD*>& pagedLODList);
-	int createNode(std::string filename,osg::Node* node2, std::string outname,std::string outdir, Json::Value& newJsonNode, Json::Value& parentJsonNode,float geometricError, float& geometricErrorOfFirstLevel);
-	void toTileSet(osg::Node* node, std::string outdir, float& geometricErrorOfFirstLevel);
+	int createNode(std::string filename,osg::Node* node2, std::string outname,std::string outdir, Json::Value& newJsonNode, Json::Value& parentJsonNode,float geometricError, float& maxGeometricError);
+	void toTileSet(osg::Node* node, std::string outdir, float& maxGeometricError);
 };
 
 

@@ -1,5 +1,5 @@
 #include "OSG2GLTF.h"
-#include "osgDB/ReadFile"
+#include "osgDB/ReadFile" 
 void OSG2GLTF::getMaterial(osg::StateSet* stateset, osg::Material*& mat, osg::Texture2D*& tex)
 {
 	if (!stateset)
@@ -490,14 +490,14 @@ Json::Value OSG2GLTF::createImages(std::string outdir, std::string buffername, F
 
 	return images;
 }
-Json::Value OSG2GLTF::createShader(std::string outdir, std::string shaderFile, const std::string& shaderSource, int shaderType, std::string buffername, FileType type)
+Json::Value OSG2GLTF::createShader(std::string outdir, std::string uridir, std::string shaderFile, const std::string& shaderSource, int shaderType, std::string buffername, FileType type)
 {
 
 	Json::Value shader;
 	shader["type"] = shaderType;
 	if (type == GLTF || outdir != "")
 	{
-		shader["uri"] = outdir + shaderFile;
+		shader["uri"] = uridir + shaderFile;
 		std::ofstream ofs(outdir + shaderFile);
 		ofs << shaderSource;
 		ofs.close();
@@ -784,8 +784,8 @@ void OSG2GLTF::toGLTF(osg::Node* osgNode, std::string outdir, std::string outnam
 
 	Json::Value imagesNode = createImages(outdir, buffername, type);
 	Json::Value shaders;
-	shaders[m_vsShaderFileName] = createShader(m_externalShaderPath, m_vsShaderFileName, VertexShader_Textured, 35633, buffername, type);
-	shaders[m_fsShaderFileName] = createShader(m_externalShaderPath, m_fsShaderFileName, FragmentShader_Textured, 35632, buffername, type);
+	shaders[m_vsShaderFileName] = createShader(outdir + m_externalShaderPath, m_externalShaderPath, m_vsShaderFileName, VertexShader_Textured, 35633, buffername, type);
+	shaders[m_fsShaderFileName] = createShader(outdir + m_externalShaderPath, m_externalShaderPath, m_fsShaderFileName, FragmentShader_Textured, 35632, buffername, type);
 
 
 	iter = m_bufferViews.begin();
@@ -933,10 +933,10 @@ void OSG2GLTF::toGLTF(std::string filename, std::string outdir, std::string outn
 	}
 }
 
-void OSG2GLTF::setFlipAxis(bool flip)
-{
-	m_flipAxis = flip;
-}
+//void OSG2GLTF::setFlipAxis(bool flip)
+//{
+//	m_flipAxis = flip;
+//}
 
 void OSG2GLTF::setExternalShaderPath(std::string shaderPath)
 {

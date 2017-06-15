@@ -4,7 +4,7 @@
 #include <osg/Geometry>
 #include <osgUtil/SmoothingVisitor>
 std::map<std::string, BatchInfo> m_masterBatchTable;
-
+ 
 class FaceVisitor
 {
 public:
@@ -246,17 +246,26 @@ void GeometryVisitor::apply(osg::Geode& node)
 			osg::Array* colors = geom->getColorArray();
 			osg::Vec3Array* colors3 = dynamic_cast<osg::Vec3Array*>(geom->getColorArray());
 			osg::Vec4Array* colors4 = dynamic_cast<osg::Vec4Array*>(geom->getColorArray());
-			osg::PrimitiveSet* primitiveSet = geom->getPrimitiveSet(0);
-			unsigned int idx = primitiveSet->getNumIndices();
+			
+			std::vector<int> indices;
+			//ºÏ²¢PrimitiveSets
+			for (int nPrimitiveSet = 0; nPrimitiveSet < geom->getNumPrimitiveSets(); nPrimitiveSet++)
+			{
+				osg::PrimitiveSet* primitiveSet = geom->getPrimitiveSet(nPrimitiveSet);
+				for (int nIdx = 0; nIdx < primitiveSet->getNumIndices(); nIdx++)
+				{
+					indices.push_back(primitiveSet->index(nIdx));
+				}
+			}
 			osg::Array* vertices = geom->getVertexArray();
 			int numvertices = vertices->getNumElements();
 			GeometryWrapper* wrapper = wrappers[batchinfo.geometryID];
 			wrapper->batches.push_back(batchinfo);
 			wrapper->tri_batchIds.resize(numvertices);
+
 			for (size_t n = batchinfo.startIndex; n < batchinfo.endIndex; n++)
 			{
-				std::vector<unsigned int> indices;
-				unsigned int idx = primitiveSet->index(n);
+				unsigned int idx = indices[n];
 				//if (colors3)
 				//{
 				//	(*colors3)[idx] = batchinfo.color;
@@ -265,6 +274,8 @@ void GeometryVisitor::apply(osg::Geode& node)
 				//{
 				//	(*colors4)[idx] = osg::Vec4(batchinfo.color, (*colors4)[idx].a());
 				//}
+				if(idx> numvertices - 1 )
+				    printf("index of out of range: %d,%d\n", idx, numvertices);
 				wrapper->tri_batchIds[idx] = batchinfo.uniqueID;
 			}
 		}

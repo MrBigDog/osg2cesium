@@ -6,7 +6,7 @@
 #include <osg/Image>
 #include <osg/Texture2D>
 #include <osg/Texture>
-//测试模型生成类
+//测试模型生成类 
 class GeometryCreator
 {
 public:

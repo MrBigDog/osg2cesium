@@ -10,7 +10,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * OpenSceneGraph Public License for more details.
 */
-
+ 
 #ifndef _EllipsoidModel
 #define _EllipsoidModel 1
 #include <Windows.h>

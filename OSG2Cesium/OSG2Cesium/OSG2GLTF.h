@@ -10,7 +10,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * OpenSceneGraph Public License for more details.
 */
-
+  
 #ifndef _OSG2GLTF
 #define _OSG2GLTF
 #include <Windows.h>
@@ -159,8 +159,8 @@ public:
 	void toGLTF(osg::Node* osgNode, std::string outdir, std::string outname, FileType type = FileType::GLTF);
 	//把osg节点文件转换为GLTF,GLB或者B3DM
 	void toGLTF(std::string filename, std::string outdir, std::string outname, FileType type = FileType::GLTF);
-	//是否从Z轴朝上翻转为Y朝上，默认为TRUE
-	void setFlipAxis(bool flip);
+	////是否从Z轴朝上翻转为Y朝上，默认为TRUE
+	//void setFlipAxis(bool flip);
 	//设置shader输出路径
 	void setExternalShaderPath(std::string shaderPath);
 private:
@@ -204,7 +204,7 @@ private:
 	void writeImages(std::string outdir);
 	static char* readBinary(std::string filename, size_t& len);
 	Json::Value createImages(std::string outdir,std::string buffername, FileType type = FileType::GLTF);
-	Json::Value createShader(std::string outdir,std::string shaderFile,const std::string& shaderSource, int shaderType, std::string buffername, FileType type = FileType::GLTF);
+	Json::Value createShader(std::string outdir, std::string uridir, std::string shaderFile,const std::string& shaderSource, int shaderType, std::string buffername, FileType type = FileType::GLTF);
 	void writeGLTF(std::string outdir, std::string outname,std::string buffername,Json::Value& gltf, FileType type = FileType::GLTF);
 	Json::Value createBatchTable();
 	Json::Value createFeatureTable();
