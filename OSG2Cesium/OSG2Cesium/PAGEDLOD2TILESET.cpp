@@ -2,7 +2,7 @@
 #include "Utils.h"
 PagedLOD2Tiles::PagedLOD2Tiles()
 {
-	//setFlipAxis(true);
+
 }
 void PagedLOD2Tiles::setTransform(double lat,double lon, double height,osg::Matrixd localTransform)
 {
@@ -14,22 +14,10 @@ PagedLOD2Tiles::~PagedLOD2Tiles()
 {
 
 }
-//void PagedLOD2Tiles::setFlipAxis(bool flip)
-//{
-//	/*m_flipAxis = flip;
-//	if (flip)
-//	{
-//		m_flipAxisTransform = osg::Matrixd::rotate(osg::DegreesToRadians(90.0), osg::Vec3(-1, 0, 0));
-//	}
-//	else
-//	{*/
-//		//m_flipAxisTransform = osg::Matrixd::identity();
-//	//}
-//}
 
 osg::Matrixd PagedLOD2Tiles::getTransform()
 {
-	return m_localTransform /** m_flipAxisTransform * */ * m_local2world;
+	return m_localTransform * m_local2world;
 }
 
 Json::Value PagedLOD2Tiles::createTransformNode(osg::Matrixd& mat)
@@ -66,7 +54,7 @@ Json::Value PagedLOD2Tiles::createRegionNode(osg::BoundingBoxd localbb)
 	geobb.init();
 	for (size_t i = 0; i < 8; i++)
 	{
-		osg::Vec3d world = localbb.corner(i) * m_localTransform /** m_flipAxisTransform*/ * m_local2world;
+		osg::Vec3d world = localbb.corner(i) * m_localTransform * m_local2world;
 		double lat, lon, height;
 		m_ellipsoidModel.convertXYZToLatLongHeight(world.x(), world.y(), world.z(), lat, lon, height);
 		geobb.expandBy(lon, lat, height);
@@ -156,7 +144,6 @@ int PagedLOD2Tiles::createNode(std::string filename,osg::Node* node2, std::strin
 	Json::Value boundingVolume;
 	//boundingVolume["box"] = createBoxNode(bb);
 	boundingVolume["region"] = createRegionNode(bb);
-	//content["boundingVolume"] = boundingVolume;
 	newJsonNode["boundingVolume"] = boundingVolume;
 	newJsonNode["content"] = content;
 	if (node.valid() /*&& !node2*/)
@@ -223,7 +210,7 @@ void PagedLOD2Tiles::toTileSet(osg::Node* node, std::string outdir)
 	tilset["asset"] = asset;
 	tilset["properties"] = properties;
 	Json::Value root;
-	root["transform"] = createTransformNode(/*m_flipAxisTransform **/ m_localTransform * m_local2world);
+	root["transform"] = createTransformNode(m_localTransform * m_local2world);
 	float geometricError = calGeometricError(node->getBound().radius(), 0.5);
 	float maxGeometricError = -1;
 	//maxGeometricError获取子节点GeometricError最大值，用于根节点包围盒
@@ -247,7 +234,6 @@ void PagedLOD2Tiles::toTileSet(osg::Node* node, std::string outdir, float& maxGe
 	tilset["asset"] = asset;
 	tilset["properties"] = properties;
 	Json::Value root;
-	//root["transform"] = createTransformNode(m_flipAxisTransform);
 	float geometricError = calGeometricError(node->getBound().radius(), 0.5);
 	//maxGeometricError获取子节点GeometricError最大值，用于根节点包围盒
 	createNode("", node, "root", outdir, root, root, geometricError, maxGeometricError);
@@ -271,7 +257,7 @@ void PagedLOD2Tiles::toTileSet(std::string indir, std::string outdir)
 	tilset["asset"] = asset;
 	tilset["properties"] = properties;
 	Json::Value root;
-	root["transform"] = createTransformNode(/*m_flipAxisTransform **/  m_localTransform * m_local2world);
+	root["transform"] = createTransformNode(m_localTransform * m_local2world);
 
 	std::vector<std::string> dirs = Utils::findSubdirs(indir + "*");
 	osg::BoundingBox bound;
@@ -286,9 +272,11 @@ void PagedLOD2Tiles::toTileSet(std::string indir, std::string outdir)
 			continue;
 		std::string dirname = dirs[i];
 		std::string nodefile = indir + dirs[i] + "/" + dirs[i] + ".osgb";
+
 		osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(nodefile);
 		if (!node || !node.valid())
 			continue;
+
 		std::string subdir = outdir + dirname + "/";
 		CreateDirectoryA(subdir.data(), NULL);
 		osg::BoundingBox bb;
@@ -298,9 +286,8 @@ void PagedLOD2Tiles::toTileSet(std::string indir, std::string outdir)
 		bound.expandBy(bb);
 		Json::Value childnode;
 		float geometricError = -1;
-		//createNode("", group->getChild(i), childname, outdir, childnode, childnode, geometricError * 0.5, maxGeometricError);
 		toTileSet(node, subdir, geometricError);
-		childnode["refine"] = "add";
+		childnode["refine"] = "replace";
 		childnode["geometricError"] = geometricError;
 		//获取子节点GeometricError最大值，用于根节点包围盒
 		if (maxGeometricError < geometricError)
@@ -310,33 +297,17 @@ void PagedLOD2Tiles::toTileSet(std::string indir, std::string outdir)
 		Json::Value boundingVolume;
 		//boundingVolume["box"] = createBoxNode(bb);
 		boundingVolume["region"] = createRegionNode(bb);
-		//content["boundingVolume"] = boundingVolume;
 		childnode["boundingVolume"] = boundingVolume;
 		childnode["content"] = content;
 		children.append(childnode);
 
 	}
-/*
 
-	float geometricError = calGeometricError(group->getBound().radius(), 0.5);
-	float maxGeometricError = -1;
-
-	for (size_t i = 0; i < group->getNumChildren(); i++)
-	{
-		std::string childname;
-		std::string ext;
-		std::string dir;
-		Utils::splitFilepath(group->getChild(i)->getName(), dir, childname, ext);
-		Json::Value childnode;
-		createNode("", group->getChild(i), childname, outdir, childnode, childnode, geometricError * 0.5, maxGeometricError);
-		childnode["refine"] = "replace";
-		children.append(childnode);
-	}*/
 	root["geometricError"] = maxGeometricError * 2;
 	Json::Value boundingVolume;
 	boundingVolume["region"] = createRegionNode(bound);
 	root["boundingVolume"] = boundingVolume;
-	root["refine"] = "add";
+	root["refine"] = "replace";
 
 	root["children"] = children;
 	tilset["root"] = root;

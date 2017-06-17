@@ -294,15 +294,26 @@ void GeometryVisitor::apply(osg::Geode& node)
 		{
 			gatherTexture(tempTex);
 		}
-
+		std::vector<std::vector<int>> indicesSets;
+		//合并PrimitiveSets
+		for (int nPrimitiveSet = 0; nPrimitiveSet < geom->getNumPrimitiveSets(); nPrimitiveSet++)
+		{
+			std::vector<int> indices;
+			osg::PrimitiveSet* primitiveSet = geom->getPrimitiveSet(nPrimitiveSet);
+			for (int nIdx = 0; nIdx < primitiveSet->getNumIndices(); nIdx++)
+			{
+				indices.push_back(primitiveSet->index(nIdx));
+			}
+			indicesSets.push_back(indices);
+		}
 		osg::Array* vertices = geom->getVertexArray();
 		osg::Array* normals = geom->getNormalArray();
-		if (!normals)
-		{
-			osgUtil::SmoothingVisitor sv;
-			node.accept(sv);
-			normals = geom->getNormalArray();
-		}
+		//if (!normals)
+		//{
+		//	osgUtil::SmoothingVisitor sv;
+		//	node.accept(sv);
+		//	normals = geom->getNormalArray();
+		//}
 		osg::Vec2Array* texcoords0 = (osg::Vec2Array *) geom->getTexCoordArray(0);
 		osg::Vec2Array* texcoords1 = (osg::Vec2Array *) geom->getTexCoordArray(1);
 		osg::Array* colors = geom->getColorArray();
@@ -336,28 +347,48 @@ void GeometryVisitor::apply(osg::Geode& node)
 				wrapper->tri_texcoords0.push_back((*texcoords1)[j]);
 			}
 		}
-
-		if (geom->getNormalBinding() == osg::Geometry::BIND_OVERALL)
+		if (normals)
 		{
-			for (size_t j = 0; j <numvertices; j++)
+			if (geom->getNormalBinding() == osg::Geometry::BIND_OVERALL)
 			{
-				osg::Vec3 normal = getVec3(normals, 0);
-				//从Z轴朝上翻转为Y朝上
-				normal = -osg::Vec3(normal.x(), normal.z(), -normal.y());
-				wrapper->tri_normals.push_back(normal);
-			}
+				for (size_t j = 0; j <numvertices; j++)
+				{
+					osg::Vec3 normal = getVec3(normals, 0);
+					//从Z轴朝上翻转为Y朝上
+					normal = -osg::Vec3(normal.x(), normal.z(), -normal.y());
+					wrapper->tri_normals.push_back(normal);
+				}
 
-		}
-		else if (geom->getNormalBinding() == osg::Geometry::BIND_PER_VERTEX)
-		{
-			for (size_t j = 0; j < numvertices; j++)
+			}
+			else if (geom->getNormalBinding() == osg::Geometry::BIND_PER_VERTEX)
 			{
-				osg::Vec3 normal = getVec3(normals, j);
-				//从Z轴朝上翻转为Y朝上
-				normal = osg::Vec3(normal.x(), normal.z(), -normal.y());
-				wrapper->tri_normals.push_back(normal);
-			}
+				for (size_t j = 0; j < numvertices; j++)
+				{
+					osg::Vec3 normal = getVec3(normals, j);
+					//从Z轴朝上翻转为Y朝上
+					normal = osg::Vec3(normal.x(), normal.z(), -normal.y());
+					wrapper->tri_normals.push_back(normal);
+				}
 
+			}
+			else if (geom->getColorBinding() == osg::Geometry::BIND_PER_PRIMITIVE_SET)
+			{
+				wrapper->tri_normals.resize(numvertices);
+				for (size_t j = 0; j < indicesSets.size(); j++)
+				{
+					std::vector<int>& indices = indicesSets[j];
+
+					for (size_t m = 0; m < indices.size(); m++)
+					{
+						int idx = indices[m];
+						osg::Vec3 normal = getVec3(normals, j);
+						//从Z轴朝上翻转为Y朝上
+						normal = osg::Vec3(normal.x(), normal.z(), -normal.y());
+						wrapper->tri_normals[idx] = normal;
+					}
+
+				}
+			}
 		}
 
 		osg::Vec4 diffuseColor(1, 1, 1, 1);
@@ -371,13 +402,28 @@ void GeometryVisitor::apply(osg::Geode& node)
 				}
 
 			}
-			else if (geom->getColorBinding() == osg::Geometry::BIND_PER_VERTEX && colors->getNumElements() == numvertices)
+			else if (geom->getColorBinding() == osg::Geometry::BIND_PER_VERTEX)
 			{
 				for (size_t j = 0; j < numvertices; j++)
 				{
 					wrapper->tri_colors.push_back(getVec4(colors, j));
 				}
 
+			}
+			else if (geom->getColorBinding() == osg::Geometry::BIND_PER_PRIMITIVE_SET)
+			{
+				wrapper->tri_colors.resize(numvertices);
+				for (size_t j = 0; j < indicesSets.size(); j++)
+				{
+					std::vector<int>& indices = indicesSets[j];
+					
+					for (size_t m = 0; m < indices.size(); m++)
+					{
+						int idx = indices[m];
+						wrapper->tri_colors[idx] = getVec4(colors, j);
+					}
+
+				}
 			}
 		}
 		std::vector<unsigned int> tri_indices;

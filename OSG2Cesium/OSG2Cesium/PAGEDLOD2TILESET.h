@@ -41,13 +41,8 @@ public:
 	//height:高度 （可能是绝对海拔高度）
 	//localTransform：局部坐标系进行变换的矩阵,可以对3D Tiles进行整体的缩放平移旋转,例如setTransform(50.1979, 127.59859, 60, osg::Matrix::scale(0.3048, 0.3048, 0.3048) * osg::Matrix::translate(0,0,500));
 	void setTransform(double lat,double lon, double height,osg::Matrixd localTransform = osg::Matrixd::identity());
-	////是否从Z轴朝上翻转为Y朝上，默认为TRUE
-	//void setFlipAxis(bool flip);
 	osg::Matrixd getTransform();
 private:
-	////是否从Z轴朝上翻转为Y朝上，默认为TRUE
-	//bool m_flipAxis;
-	//osg::Matrixd m_flipAxisTransform;
 	osg::CesiumEllipsoidModel m_ellipsoidModel;
 	osg::Matrixd m_local2world;
 	osg::Vec3d m_latlonheight;

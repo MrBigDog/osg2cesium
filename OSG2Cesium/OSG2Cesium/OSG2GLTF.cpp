@@ -18,46 +18,110 @@ void OSG2GLTF::getMaterial(osg::StateSet* stateset, osg::Material*& mat, osg::Te
 
 }
 
-Json::Value OSG2GLTF::createMaterialNode(osg::Material* mat, std::string name, std::string texname)
+std::string OSG2GLTF::createMaterialNode(osg::Geometry* geom, osg::StateSet* curStateSet)
 {
 
 	Json::Value matnode;
-	matnode["name"] = name;
 	matnode["technique"] = "technique0";
 	Json::Value values;
 	Json::Value diffuse(Json::arrayValue);
+	Json::Value ambient(Json::arrayValue);
 	Json::Value specular(Json::arrayValue);
 	Json::Value emission(Json::arrayValue);
 	osg::Vec4 diffuseColor(1, 1, 1, 1);
+	osg::Vec4 ambientColor(0, 0, 0, 0);
 	osg::Vec4 specularColor(0.2, 0.2, 0.2, 1);
 	float shininess = 256;
-	if (mat)
-	{
-		diffuseColor = mat->getDiffuse(osg::Material::FRONT);
-		//if (diffuseColor.b() != diffuseColor.g())
-		//printf("%f,%f,%f", diffuseColor.r(), diffuseColor.g(), diffuseColor.b());
-		specularColor = mat->getSpecular(osg::Material::FRONT);
-		shininess = mat->getShininess(osg::Material::FRONT);
-		diffuse.append(diffuseColor.r()); diffuse.append(diffuseColor.g()); diffuse.append(diffuseColor.b()); diffuse.append(diffuseColor.a());
-		specular.append(specularColor.r()); specular.append(specularColor.g()); specular.append(specularColor.b()); specular.append(specularColor.a());
+	bool hasDiffuse = false;
+	bool hasColor = false;
+	bool hasTex = false;
+	bool isLightOn = true;//没有设置GL_LIGHTING情况下光照默认开启，跟osg保持一致
+	bool hasNormal = false;
+	osg::ref_ptr<osg::StateSet> geomStateSet = new osg::StateSet(*geom->getOrCreateStateSet());
+	geomStateSet->merge(*curStateSet);
 
-		//osg::Vec4 emissionColor = mat->getEmission(osg::Material::FRONT);
-		//emission.append(emissionColor.r()); emission.append(emissionColor.g()); emission.append(emissionColor.b()); emission.append(emissionColor.a());
+	unsigned int GL_BLEND_ENABLED = geomStateSet->getMode(GL_BLEND);
+	unsigned int GL_LIGHTING_ENABLED = geomStateSet->getMode(GL_LIGHTING);
+	bool blendEnabled = false;
+	if (GL_BLEND_ENABLED & osg::StateAttribute::Values::ON)
+		blendEnabled = true;
+	if (GL_LIGHTING_ENABLED & osg::StateAttribute::Values::OFF)
+		isLightOn = false;
+
+	osg::Material* mat = NULL;
+	osg::Texture2D* tex = NULL;
+	getMaterial(geom->getStateSet(), mat, tex);
+	std::string materialname = "";
+
+	if (tex && tex->getImage(0))
+	{
+		materialname = tex->getImage(0)->getName();
+		hasTex = true;
 	}
 	else
 	{
+		materialname = getPointer(mat);
+	}
+	//materialname = getPointer(mat);
+	if (geom->getName() == "")
+	{
+		geom->setName(getPointer(geom));
+	}
+    if (mat)
+	{
+		hasDiffuse = true;
+	}
+
+	if (geom->getColorArray())
+		hasColor = true;
+	if (geom->getNormalArray())
+		hasNormal = true;
+	matnode["name"] = materialname;
+
+	if (mat)
+	{
+		ambientColor = mat->getAmbient(osg::Material::FRONT);
+		diffuseColor = mat->getDiffuse(osg::Material::FRONT);
+		specularColor = mat->getSpecular(osg::Material::FRONT);
+		shininess = mat->getShininess(osg::Material::FRONT);
+		ambient.append(ambientColor.r()); ambient.append(ambientColor.g()); ambient.append(ambientColor.b()); ambient.append(ambientColor.a());
+		diffuse.append(diffuseColor.r()); diffuse.append(diffuseColor.g()); diffuse.append(diffuseColor.b()); diffuse.append(diffuseColor.a());
+		specular.append(specularColor.r()); specular.append(specularColor.g()); specular.append(specularColor.b()); specular.append(specularColor.a());
+	}
+	else
+	{
+		ambient.append(0); ambient.append(0); ambient.append(0); ambient.append(0);
 		diffuse.append(1); diffuse.append(1); diffuse.append(1); diffuse.append(1);
 		specular.append(0.2); specular.append(0.2); specular.append(0.2); specular.append(1);
 	}
 
 	values["diffuse"] = diffuse;
-	values["diffuseTex"] = texname;
+	values["ambient"] = ambient;
+	values["diffuseTex"] = materialname;
 	values["specular"] = specular;
 	//values["emission"] = emission;
 	values["shininess"] = shininess;
-	matnode["values"] = values;
+	values["hasDiffuse"] = hasDiffuse;
+	values["hasColor"] = hasColor;
+	values["hasTex"] = hasTex;
+	values["hasNormal"] = hasNormal;
+	values["isLightOn"] = isLightOn;
 
-	return matnode;
+	matnode["values"] = values;
+	if (blendEnabled)
+	{
+		matnode["technique"] = "technique1";
+		m_TransparentTechnique = createTechniqueNode(true, m_type);
+		m_techniques["technique1"] = m_TransparentTechnique;
+	}
+	else
+	{
+		matnode["technique"] = "technique0";
+		m_Technique = createTechniqueNode(false, m_type);
+		m_techniques["technique0"] = m_Technique;
+	}
+	m_materials[materialname] = matnode;
+	return materialname;
 
 }
 Json::Value OSG2GLTF::createNode(osg::Node* node, osg::StateSet* parentStateSet)
@@ -90,9 +154,10 @@ Json::Value OSG2GLTF::createNode(osg::Node* node, osg::StateSet* parentStateSet)
 			osg::Geometry* geom = dynamic_cast<osg::Geometry*>(geode->getDrawable(i));
 			if (!geom)
 				continue;
-			osg::ref_ptr<osg::StateSet> geomStateSet = new osg::StateSet(*geom->getOrCreateStateSet());
-			geomStateSet->merge(*curStateSet);
 
+			std::string materialname = createMaterialNode(geom, curStateSet);
+		/*	osg::ref_ptr<osg::StateSet> geomStateSet = new osg::StateSet(*geom->getOrCreateStateSet());
+			geomStateSet->merge(*curStateSet);
 			unsigned int GL_BLEND_ENABLED = geomStateSet->getMode(GL_BLEND);
 			bool blendEnabled = false;
 			if (GL_BLEND_ENABLED & osg::StateAttribute::Values::ON)
@@ -100,6 +165,9 @@ Json::Value OSG2GLTF::createNode(osg::Node* node, osg::StateSet* parentStateSet)
 			osg::Material* mat = NULL;
 			osg::Texture2D* tex = NULL;
 			getMaterial(geom->getStateSet(), mat, tex);
+			bool hasColor = true;
+			if (!geom->getColorArray())
+				hasColor = false;
 			std::string materialname = "";
 			if (geom->getName() == "")
 			{
@@ -133,7 +201,7 @@ Json::Value OSG2GLTF::createNode(osg::Node* node, osg::StateSet* parentStateSet)
 				m_materials[materialname]["technique"] = "technique0";
 				m_Technique = createTechniqueNode(false, m_type);
 				m_techniques["technique0"] = m_Technique;
-			}
+			}*/
 			if (m_meshes.find(geom->getName()) == m_meshes.end())
 			{
 				bool usebatch = false;
@@ -222,10 +290,28 @@ Json::Value OSG2GLTF::createTechniqueNode(bool istransparent, FileType type)
 	attachNode(parameters, "diffuse",
 		"type", Json::Value(35666));
 
+	attachNode(parameters, "ambient",
+		"type", Json::Value(35666));
+
 	attachNode(parameters, "diffuseTex",
 		"type", Json::Value(35678));
 	std::vector<std::string> strings;
 	std::vector<Json::Value> jsonvalues;
+
+	attachNode(parameters, "hasDiffuse",
+		"type", Json::Value(35670));
+
+	attachNode(parameters, "hasTex",
+		"type", Json::Value(35670));
+
+	attachNode(parameters, "hasColor",
+		"type", Json::Value(35670));
+
+	attachNode(parameters, "hasNormal",
+		"type", Json::Value(35670));
+
+	attachNode(parameters, "isLightOn",
+		"type", Json::Value(35670));
 
 	strings.clear();
 	jsonvalues.clear();
@@ -326,13 +412,19 @@ Json::Value OSG2GLTF::createTechniqueNode(bool istransparent, FileType type)
 
 	Json::Value uniforms;
 	uniforms["u_diffuse"] = Json::Value("diffuse");
+	uniforms["u_ambient"] = Json::Value("ambient");
 	uniforms["u_diffuseTex"] = Json::Value("diffuseTex");
+	uniforms["u_hasDiffuse"] = Json::Value("hasDiffuse");
+	uniforms["u_hasTex"] = Json::Value("hasTex");
+	uniforms["u_hasColor"] = Json::Value("hasColor");
+	uniforms["u_hasNormal"] = Json::Value("hasNormal");
+	uniforms["u_isLightOn"] = Json::Value("isLightOn");
+	
 	uniforms["u_modelViewMatrix"] = Json::Value("modelViewMatrix");
 	uniforms["u_normalMatrix"] = Json::Value("normalMatrix");
 	uniforms["u_projectionMatrix"] = Json::Value("projectionMatrix");
 	uniforms["u_shininess"] = Json::Value("shininess");
 	uniforms["u_specular"] = Json::Value("specular");
-
 
 	node["uniforms"] = uniforms;
 	return node;
@@ -561,7 +653,15 @@ void OSG2GLTF::writeGLTF(std::string outdir, std::string outname, std::string bu
 {
 	Json::StyledWriter sw;
 	std::string gltfContent = sw.write(gltf);
-
+	std::ofstream ofs_gltf(outdir + outname + ".gltf");
+	ofs_gltf << gltfContent;
+	ofs_gltf.close();
+	std::ofstream ofs_bin(outdir + outname + ".bin", std::ios::out | std::ios::binary);
+	if (m_indexBufferData.size() > 0)
+		ofs_bin.write(&m_indexBufferData[0], m_indexBufferData.size());
+	if (m_vertexBufferData.size() > 0)
+		ofs_bin.write(&m_vertexBufferData[0], m_vertexBufferData.size());
+	ofs_bin.close();
 	if (type == GLTF)
 	{
 		std::ofstream ofs_gltf(outdir + outname + ".gltf");
@@ -719,7 +819,10 @@ std::string OSG2GLTF::getPointer(void* ptr)
 
 void OSG2GLTF::toGLTF(osg::Node* osgNode, std::string outdir, std::string outname, FileType type)
 {
-	osg::ref_ptr<osg::Node> dummyNode;
+	//osg::ref_ptr<osg::Node> dummyNode;
+	//dummyNode = new osg::MatrixTransform;
+	//((osg::MatrixTransform*)dummyNode->asNode())->addChild(osgNode);
+	//((osg::MatrixTransform*)dummyNode->asNode())->setMatrix(osg::Matrix::rotate(osg::DegreesToRadians(90.0), osg::Vec3(1, 0, 0)));
 	/*if (m_flipAxis)
 	{
 		dummyNode = new osg::MatrixTransform;
@@ -728,13 +831,15 @@ void OSG2GLTF::toGLTF(osg::Node* osgNode, std::string outdir, std::string outnam
 	}
 	else
 	{*/
-		dummyNode = osgNode;
+		//dummyNode = osgNode;
+	//}
+	//dummyNode = osgNode;
+	//if (dummyNode->getName() == "")
+	//{
+	//	dummyNode->setName(outname);
 	//}
 
-	if (dummyNode->getName() == "")
-	{
-		dummyNode->setName(outname);
-	}
+	osgNode->setName(outname);
 	m_type = type;
 	m_indexBufferData.clear();
 	m_vertexBufferData.clear();
@@ -752,14 +857,14 @@ void OSG2GLTF::toGLTF(osg::Node* osgNode, std::string outdir, std::string outnam
 	std::string buffername = outname;
 	if (type != GLTF)
 		buffername = "binary_glTF";
-	dummyNode->accept(m_GeometryVisitor);
+	osgNode->accept(m_GeometryVisitor);
 
 	//if (m_GeometryVisitor.m_ImageMap.size() > 0)
 	//	return;
 	m_Technique = createTechniqueNode(false, type);
 	m_TransparentTechnique = createTechniqueNode(true, type);
 	Json::Value gltf;
-	Json::Value rootNode = createNode(dummyNode);
+	Json::Value rootNode = createNode(osgNode);
 
 	Json::Value accessors;
 	std::map<std::string, Json::Value>::iterator iter = m_accessors.begin();
@@ -875,7 +980,7 @@ void OSG2GLTF::toGLTF(osg::Node* osgNode, std::string outdir, std::string outnam
 	Json::Value defaultScene;
 	Json::Value defaultSceneNodes(Json::arrayValue);
 	//defaultSceneNodes.append(osgNode->getName());
-	defaultSceneNodes.append(dummyNode->getName());
+	defaultSceneNodes.append(osgNode->getName());
 	defaultScene["nodes"] = defaultSceneNodes;
 	scenes["defaultScene"] = defaultScene;
 	gltf["scenes"] = scenes;

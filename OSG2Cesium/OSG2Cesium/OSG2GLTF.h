@@ -108,24 +108,40 @@ static const char *FragmentShader_Textured = {
 "varying vec2 v_texcoord0;\n"
 "varying vec4 v_color;\n"
 "uniform vec4 u_diffuse;\n"
+"uniform vec4 u_ambient;\n"
 "uniform sampler2D u_diffuseTex;\n"
+"uniform bool u_hasDiffuse;\n"
+"uniform bool u_hasTex;\n"
+"uniform bool u_hasColor;\n"
+"uniform bool u_hasNormal;\n"
+"uniform bool u_isLightOn;\n"
 "uniform vec4 u_specular;\n"
 "uniform float u_shininess;\n"
 
 "void main(void)\n"
 "{\n"
-"    vec3 normal = normalize(v_normal);\n"
-"    vec4 color = vec4(0., 0., 0., 0.);\n"
-"    vec4 diffuse = vec4(0., 0., 0., 1.);\n"
-"    vec4 specular = u_specular;\n"
-"    diffuse = texture2D(u_diffuseTex, v_texcoord0);\n"
-"    diffuse.rgb = v_color.a * diffuse.rgb * u_diffuse.rgb;\n"
-"    if(length(v_color.rgb) > 0.0001)\n"
-"       diffuse.rgb = diffuse.rgb * v_color.rgb;\n"
-"    //diffuse.rgb *= max(dot(normal,vec3(0.,0.,1.)), 0.);\n"
-"    //diffuse.a = diffuse.a * u_diffuse.a * v_color.a;\n"
-"   //color.xyz += diffuse.xyz;\n"
-"   //color = vec4(color.rgb * diffuse.a, diffuse.a);\n"
+"    vec4 diffuse = vec4(1., 1., 1., 1.);\n"
+"    //使用纹理颜色\n"
+"    if(u_hasTex)\n"
+"    {\n"
+"         diffuse = texture2D(u_diffuseTex, v_texcoord0);\n"
+"    }\n"
+"    //使用逐顶点color\n"
+"    if(u_hasColor)\n"
+"    {\n"
+"       diffuse = diffuse * v_color;\n"
+"    }\n"
+"    //使用osg::Material的diffuse\n"
+"    if(u_hasDiffuse)\n"
+"    {\n"
+"       diffuse = diffuse * u_diffuse;\n"
+"    }\n"
+"    //开启光照\n"
+"    if(u_hasNormal && u_isLightOn)\n"
+"    {\n"
+"       vec3 normal = normalize(v_normal);\n"
+"       diffuse.rgb *= max(dot(normal,vec3(0.,0.,1.)), 0.); \n"
+"    }\n"
 "   gl_FragColor = diffuse;\n"
 "}\n"
 };
@@ -191,7 +207,7 @@ private:
 	GeometryVisitor m_GeometryVisitor;
 	std::string getPointer(void* ptr);
 	void getMaterial(osg::StateSet* stateset, osg::Material*& mat, osg::Texture2D*& tex);
-	Json::Value createMaterialNode(osg::Material* mat, std::string name, std::string texname = "");
+	std::string createMaterialNode(osg::Geometry* geom, osg::StateSet* curStateset);
 	Json::Value createNode(osg::Node* node, osg::StateSet* parentStateSet = NULL);
 	void attachNode(Json::Value& root, std::string name1, Json::Value val);
 	void attachNode(Json::Value& root, std::string name1, std::string name2, Json::Value val);
