@@ -4,11 +4,11 @@ PagedLOD2Tiles::PagedLOD2Tiles()
 {
 
 }
-void PagedLOD2Tiles::setTransform(double lat,double lon, double height,osg::Matrixd localTransform)
+void PagedLOD2Tiles::setTransform(double lat, double lon, double height, osg::Matrixd localTransform)
 {
-		m_latlonheight = osg::Vec3d(lat, lon,height);
-		m_ellipsoidModel.computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians(lat), osg::DegreesToRadians(lon), height, m_local2world);
-		m_localTransform = localTransform;
+	m_latlonheight = osg::Vec3d(lat, lon, height);
+	m_ellipsoidModel.computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians(lat), osg::DegreesToRadians(lon), height, m_local2world);
+	m_localTransform = localTransform;
 }
 PagedLOD2Tiles::~PagedLOD2Tiles()
 {
@@ -67,11 +67,11 @@ Json::Value PagedLOD2Tiles::createRegionNode(osg::BoundingBoxd localbb)
 	region.append(geobb.zMax());
 	return region;
 }
- 
+
 float PagedLOD2Tiles::calGeometricError(float radius, float screenPixels)
-{ 
+{
 	return (3.1415926 * radius * radius) / screenPixels /*/ 10*/;
-	
+
 	// (radius * 2 / screenPixels) * 2;
 }
 
@@ -83,7 +83,7 @@ void PagedLOD2Tiles::findPagedLOD(osg::Node* parent, std::vector<osg::PagedLOD*>
 	{
 		pagedLODList.push_back(lod);
 	}
-	else if(group && !dynamic_cast<osg::Geode*>(parent))
+	else if (group && !dynamic_cast<osg::Geode*>(parent))
 	{
 		for (size_t i = 0; i < group->getNumChildren(); i++)
 		{
@@ -92,16 +92,16 @@ void PagedLOD2Tiles::findPagedLOD(osg::Node* parent, std::vector<osg::PagedLOD*>
 	}
 }
 
-int PagedLOD2Tiles::createNode(std::string filename,osg::Node* node2, std::string outname,std::string outdir, Json::Value& newJsonNode, Json::Value& parentJsonNode,float geometricError, float& maxGeometricError)
+int PagedLOD2Tiles::createNode(std::string filename, osg::Node* node2, std::string outname, std::string outdir, Json::Value& newJsonNode, Json::Value& parentJsonNode, float geometricError, float& maxGeometricError)
 {
 	osg::ref_ptr<osg::Node> node;
-	if(node2)
+	if (node2)
 	{
 		node = node2;
 	}
 	else
 	{
-	    node = osgDB::readNodeFile(filename);
+		node = osgDB::readNodeFile(filename);
 		printf("%s\n", filename.data());
 	}
 	printf("%s\n", filename.data());
@@ -123,6 +123,9 @@ int PagedLOD2Tiles::createNode(std::string filename,osg::Node* node2, std::strin
 	osg::ComputeBoundsVisitor cv;
 	node->accept(cv);
 	bb = cv.getBoundingBox();
+	//跳过空的节点
+	if (!bb.valid())
+		return 2;
 	float range = 0;
 	float radius = 0;
 	if (childLODS.size() > 0 && childLODS[0]->getRangeList().size() > 1)
@@ -149,20 +152,18 @@ int PagedLOD2Tiles::createNode(std::string filename,osg::Node* node2, std::strin
 	if (node.valid() /*&& !node2*/)
 	{
 		OSG2GLTF osg2gltf;
-		//osg2gltf.setFlipAxis(false);
-		//osg2gltf.m_flipAxis = m_flipAxis;
 		//检测文件是否存在。如存在就不覆盖
-		//std::ifstream file(outdir + outname + ".b3dm");
-		//if (!file) {
-		//	file.close();
-		//	osg2gltf.toGLTF(node, outdir, outname, OSG2GLTF::B3DM);
-		//}
-		//else
-		//{
-		//  file.close();
-		//}
+		std::ifstream file(outdir + outname + ".b3dm");
+		if (!file) {
+			file.close();
+			osg2gltf.toGLTF(node, outdir, outname, OSG2GLTF::B3DM);
+		}
+		else
+		{
+			file.close();
+		}
 		osg2gltf.setExternalShaderPath("../");
-		osg2gltf.toGLTF(node, outdir, outname, OSG2GLTF::B3DM);
+		//osg2gltf.toGLTF(node, outdir, outname, OSG2GLTF::B3DM);
 
 	}
 	Json::Value children(Json::arrayValue);
@@ -186,14 +187,14 @@ int PagedLOD2Tiles::createNode(std::string filename,osg::Node* node2, std::strin
 		{
 			childFileName = databasepath + childFileName;
 		}
-	
-		if (createNode(childFileName, NULL, childname, outdir, childJSNode, newJsonNode,geometricError*0.5,maxGeometricError) != 2)
+
+		if (createNode(childFileName, NULL, childname, outdir, childJSNode, newJsonNode, geometricError*0.5, maxGeometricError) != 2)
 		{
 			children.append(childJSNode);
 		}
-	
+
 	}
-	if(hasChild)
+	if (hasChild)
 		newJsonNode["children"] = children;
 	return 1;
 
@@ -236,6 +237,8 @@ void PagedLOD2Tiles::toTileSet(osg::Node* node, std::string outdir, float& maxGe
 	Json::Value root;
 	float geometricError = calGeometricError(node->getBound().radius(), 0.5);
 	//maxGeometricError获取子节点GeometricError最大值，用于根节点包围盒
+	if (maxGeometricError < 0)
+		maxGeometricError = geometricError;
 	createNode("", node, "root", outdir, root, root, geometricError, maxGeometricError);
 	root["geometricError"] = maxGeometricError * 1.5;
 	tilset["root"] = root;
@@ -283,6 +286,11 @@ void PagedLOD2Tiles::toTileSet(std::string indir, std::string outdir)
 		osg::ComputeBoundsVisitor cv;
 		node->accept(cv);
 		bb = cv.getBoundingBox();
+		if (!bb.valid())
+		{
+			printf("忽略%s：瓦片内容为空！\n", dirname.data());
+			continue;
+		}
 		bound.expandBy(bb);
 		Json::Value childnode;
 		float geometricError = -1;
@@ -307,7 +315,7 @@ void PagedLOD2Tiles::toTileSet(std::string indir, std::string outdir)
 	Json::Value boundingVolume;
 	boundingVolume["region"] = createRegionNode(bound);
 	root["boundingVolume"] = boundingVolume;
-	root["refine"] = "replace";
+	root["refine"] = "add";
 
 	root["children"] = children;
 	tilset["root"] = root;
